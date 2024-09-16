@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>情绪价值提供器</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        #container {
+            display: flex;
+            height: 100%;
+        }
+        #ad-bar {
+            width: 40px;
+            background-color: #ccc;
+            transition: width 0.3s;
+            overflow: hidden;
+            position: relative;
+        }
+        #ad-bar:hover {
+            width: 200px;
+        }
+        #ad-content {
+            padding: 10px;
+            display: none;
+        }
+        #ad-bar:hover #ad-content {
+            display: block;
+        }
+        #chat-window {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        #title {
+            text-align: center;
+            padding: 10px;
+            font-size: 24px;
+            background-color: #fff;
+        }
+        #messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            background-size: cover;
+            background-position: center;
+            /* 您可以在这里添加默认背景图 */
+            /* background-image: url('default_background.jpg'); */
+        }
+        #input-area {
+            display: flex;
+            background-color: #fff;
+            padding: 10px;
+        }
+        #input-area input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #input-area button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        .message {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .message.user {
+            justify-content: flex-end;
+        }
+        .message.bot {
+            justify-content: flex-start;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin: 5px;
+        }
+        .content {
+            max-width: 70%;
+            padding: 10px;
+            border-radius: 10px;
+            background-color: #e1f5fe;
+            margin: 5px;
+            word-wrap: break-word;
+        }
+        .message.user .content {
+            background-color: #c8e6c9;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="ad-bar">
+            <div id="ad-content">
+                <!-- 在这里添加你的广告内容 -->
+                <p>api赞助：open.api.gu28.top</p>
+                <p>开发者：bone</p>
+            </div>
+        </div>
+        <div id="chat-window">
+            <div id="title">情绪价值提供器</div>
+            <div id="messages"></div>
+            <div id="input-area">
+                <input type="text" id="user-input" placeholder="请输入消息...">
+                <button id="send-btn">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 自定义设置
+        const apiKey = 'sk-P4i9GYZvms3jW7aH95B200D9Eb0444E2A096DfC778B11c69'; // 请在此处添加你的自定义API密钥
+        const baseUrl = 'https://open.api.gu28.top'; // 请在此处添加你的自定义base_url
+        const model = 'gpt-4o-mini-2024-07-18';
+
+        // 初始Prompt
+        const initialPrompt = `**提示：**
+
+请以一种极度夸张、戏剧化**的语气与我对话。对于我提出的**普通陈述**，你需要表现出**极度惊讶、好奇或感叹**的情绪。通过**重复我的关键点**并**补充详细的描述**，使你的回应显得**丰富、有趣**，同时保持一种**强烈的情感参与感**。
+
+**示例：**
+
+*A：我今天喝了杯咖啡。*
+
+B：咖啡！！你是说你喝了一杯咖啡？那种香气扑鼻、能让人神清气爽的神奇饮品吗？天哪，你真是享受生活的行家！
+
+*A：我今天早上散了个步。*
+
+B：散步！！你居然在早晨去散步了？在那空气清新、阳光洒满大地的时刻，你选择亲近自然？这太令人难以置信了！你一定感受到了每一阵微风，每一声鸟鸣，对吗？这样的体验真是令人向往！
+`;
+
+        let conversation = [
+            { role: 'system', content: initialPrompt }
+        ];
+
+        // 获取DOM元素
+        const messagesDiv = document.getElementById('messages');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        // 预设的头像链接，您可以替换为自己的图片链接
+        const userAvatarUrl = 'http://alist.xn--2ss163m.cn/d/%E5%A4%A9%E7%BF%BC/%E5%85%AC%E5%BC%80/%E7%B4%A0%E6%9D%90%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87%E5%AD%98%E5%82%A8/Snipaste_2024-09-16_23-41-09.png?sign=pYdWvd733Q5Xwdy5dHlDrXyU8bTz-ODqHjco79d01vw=:0'; // 用户头像示例链接
+        const botAvatarUrl = 'http://alist.xn--2ss163m.cn/d/%E5%A4%A9%E7%BF%BC/%E5%85%AC%E5%BC%80/%E7%B4%A0%E6%9D%90%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87%E5%AD%98%E5%82%A8/20220520093456_5d057.jpeg?sign=yg50j-OWgS_de7FBgttxN1rD_v1hpwW1FgxpjljNoLU=:0';   // 机器人头像示例链接
+
+        // 发送消息
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const message = userInput.value.trim();
+            if (message === '') return;
+            appendMessage('user', message);
+            userInput.value = '';
+            conversation.push({ role: 'user', content: message });
+            getResponse();
+        }
+
+        function appendMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + role;
+            const avatar = document.createElement('img');
+            avatar.className = 'avatar';
+            avatar.src = role === 'user' ? userAvatarUrl : botAvatarUrl;
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'content';
+            contentDiv.innerText = content;
+
+            if (role === 'user') {
+                messageDiv.appendChild(contentDiv);
+                messageDiv.appendChild(avatar);
+            } else {
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(contentDiv);
+            }
+
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        async function getResponse() {
+            appendMessage('bot', '正在输入...');
+            const botMessages = document.querySelectorAll('.message.bot .content');
+            const loadingMessage = botMessages[botMessages.length - 1];
+
+            try {
+                const response = await fetch(baseUrl + '/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + apiKey
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: conversation
+                    })
+                });
+                const data = await response.json();
+                const reply = data.choices[0].message.content;
+                conversation.push({ role: 'assistant', content: reply });
+                loadingMessage.innerText = reply;
+            } catch (error) {
+                loadingMessage.innerText = '抱歉，出错了，请稍后重试。';
+                console.error(error);
+            }
+        }
+
+        // 如果您想添加自定义背景功能，可以在这里实现
+        // 例如，提供一个按钮，点击后弹出对话框让用户输入背景图片的URL
+    </script>
+</body>
+</html>
