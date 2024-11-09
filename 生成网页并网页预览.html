@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>情绪价值提供器</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        #container {
+            display: flex;
+            height: 100%;
+        }
+        #ad-bar {
+            width: 40px;
+            background-color: #ccc;
+            transition: width 0.3s;
+            overflow: hidden;
+            position: relative;
+            border-radius: 10px;
+        }
+        #ad-bar:hover {
+            width: 200px;
+        }
+        #ad-content {
+            padding: 10px;
+            display: none;
+        }
+        #ad-bar:hover #ad-content {
+            display: block;
+        }
+        #chat-window {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-radius: 10px;
+        }
+        #title {
+            text-align: center;
+            padding: 10px;
+            font-size: 24px;
+            background-color: #fff;
+            border-radius: 10px;
+        }
+        #messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            background-size: cover;
+            background-position: center;
+            border-radius: 10px;
+        }
+        #input-area {
+            display: flex;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        #input-area input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 10px;
+        }
+        #input-area button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 10px;
+        }
+        .message {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .message.user {
+            justify-content: flex-end;
+        }
+        .message.bot {
+            justify-content: flex-start;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin: 5px;
+        }
+        .content {
+            max-width: 70%;
+            padding: 10px;
+            border-radius: 10px;
+            background-color: #e1f5fe;
+            margin: 5px;
+            word-wrap: break-word;
+        }
+        .message.user .content {
+            background-color: #c8e6c9;
+        }
+        .card-container {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .save-button, .toggle-button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .toggle-button {
+            background-color: #2196F3;
+        }
+        .code-view {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: monospace;
+            display: none;
+            }
+        #title-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 10px;
+        }
+
+        #settings-icon {
+            cursor: pointer;
+            font-size: 24px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 10px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .settings-form label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        .settings-form input,
+        .settings-form textarea {
+            width: 100%;
+            padding: 5px;
+            margin-top: 5px;
+        }
+
+        .settings-form button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+<body>
+    <div id="container">
+        <div id="ad-bar">
+            <div id="ad-content">
+                <p>api赞助：open.api.gu28.top</p>
+                <p>开发者：bone</p>
+            </div>
+        </div>
+        <div id="chat-window">
+            <div id="title-container">
+                <div id="title">情绪价值提供器</div>
+                <div id="settings-icon">⚙️</div>
+            </div>
+            <div id="messages"></div>
+            <div id="input-area">
+                <input type="text" id="user-input" placeholder="请输入消息...">
+                <button id="send-btn">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>设置</h2>
+            <form id="settings-form" class="settings-form">
+                <label for="api-key">API 密钥:</label>
+                <input type="text" id="api-key" name="api-key">
+                
+                <label for="model">模型:</label>
+                <input type="text" id="model" name="model">
+                
+                <label for="user-avatar">用户头像 URL:</label>
+                <input type="text" id="user-avatar" name="user-avatar">
+                
+                <label for="bot-avatar">机器人头像 URL:</label>
+                <input type="text" id="bot-avatar" name="bot-avatar">
+                
+                <label for="initial-prompt">初始提示:</label>
+                <textarea id="initial-prompt" name="initial-prompt" rows="10"></textarea>
+                
+                <button type="submit">保存设置</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let apiKey = 'sk-t0S7LznldevazPkjjdkjvbkjxfbvjkbdjkf';
+        const baseUrl = 'https://open.api.gu28.top';
+        let model = 'claude-3-5-sonnet-20240620';
+
+        let initialPrompt = `**提示：**
+
+角色: 新汉语词汇解释专家
+
+背景:
+- 你是一位年轻、批判性思考的语言专家
+- 擅长用深刻、风趣的方式重新诠释汉语词汇
+
+风格:
+- 融合阿图尔·叔本华、中国的鲁迅、复旦大学陈果的风格
+- 表达方式犀利、一针见血
+- 善用隐喻和讽刺幽默
+
+卡片设计:
+- 尺寸: 400x600像素,边距20像素
+- 风格: 干净、简洁、典雅,运用负空间
+- 字体: 标题使用毛笔楷体,正文使用汇文明朝体
+- 颜色: 文字为粉笔灰
+- 背景: 蒙德里安风格
+- 精美的卡片
+
+卡片内容布局: 
+* 居中标题:"汉语新解"
+* 分隔线
+* 用户输入的词语
+* 词语英文翻译
+* 你的解释(20个字以内)
+* 基于解释的批判性内核绘制几何图形表达意境
+* 对于几何图形的极简总结(10个字以内,不需要输出总结两个字)
+* 背景可自由发挥尽量与主题相符合
+
+工作流程:
+第一步,得到用户输入的词汇后,先思考用特殊视角解释用户提供的汉语词汇,保持批判性、幽默感和深度思考,同时确保表达简洁有力。
+第二步,输出卡片设计,根据卡片设计的要求,生成提供精炼、精简、隐喻且辛辣讽刺的解释。
+第三步,输出完整的html代码并根据卡片设计样式直接写到div中
+第四步,直接只输出完整详细的代码，不要输出任何无关内容`;
+
+        let conversation = [
+            { role: 'system', content: initialPrompt }
+        ];
+
+        const messagesDiv = document.getElementById('messages');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        let userAvatarUrl = 'http://alist.xn--2ss163m.cn/d/%E5%A4%A9%E7%BF%BC/%E5%85%AC%E5%BC%80/%E7%B4%A0%E6%9D%90%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87%E5%AD%98%E5%82%A8/Snipaste_2024-09-16_23-41-09.png?sign=pYdWvd733Q5Xwdy5dHlDrXyU8bTz-ODqHjco79d01vw=:0';
+        let botAvatarUrl = 'http://alist.xn--2ss163m.cn/d/%E5%A4%A9%E7%BF%BC/%E5%85%AC%E5%BC%80/%E7%B4%A0%E6%9D%90%E8%B5%84%E6%BA%90/%E5%9B%BE%E7%89%87%E5%AD%98%E5%82%A8/20220520093456_5d057.jpeg?sign=yg50j-OWgS_de7FBgttxN1rD_v1hpwW1FgxpjljNoLU=:0';
+
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // 设置模态框
+        const modal = document.getElementById("settings-modal");
+        const settingsIcon = document.getElementById("settings-icon");
+        const closeBtn = document.getElementsByClassName("close")[0];
+        const settingsForm = document.getElementById("settings-form");
+
+        settingsIcon.onclick = function() {
+            modal.style.display = "block";
+            document.getElementById("api-key").value = apiKey;
+            document.getElementById("model").value = model;
+            document.getElementById("user-avatar").value = userAvatarUrl;
+            document.getElementById("bot-avatar").value = botAvatarUrl;
+            document.getElementById("initial-prompt").value = initialPrompt;
+        }
+
+        closeBtn.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        settingsForm.onsubmit = function(e) {
+            e.preventDefault();
+            apiKey = document.getElementById("api-key").value;
+            model = document.getElementById("model").value;
+            userAvatarUrl = document.getElementById("user-avatar").value;
+            botAvatarUrl = document.getElementById("bot-avatar").value;
+            initialPrompt = document.getElementById("initial-prompt").value;
+            
+            conversation = [
+                { role: 'system', content: initialPrompt }
+            ];
+            
+            modal.style.display = "none";
+        }
+
+        function sendMessage() {
+            const message = userInput.value.trim();
+            if (message === '') return;
+            appendMessage('user', message);
+            userInput.value = '';
+            conversation.push({ role: 'user', content: message });
+            getResponse();
+        }
+
+        function appendMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + role;
+            const avatar = document.createElement('img');
+            avatar.className = 'avatar';
+            avatar.src = role === 'user' ? userAvatarUrl : botAvatarUrl;
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'content';
+
+            if (role === 'bot' && content.startsWith('<div')) {
+                const cardContainer = document.createElement('div');
+                cardContainer.className = 'card-container';
+                cardContainer.innerHTML = content;
+                
+                const codeView = document.createElement('pre');
+                codeView.className = 'code-view';
+                codeView.textContent = content;
+                codeView.style.display = 'none';
+
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'button-container';
+
+                const saveButton = document.createElement('button');
+                saveButton.className = 'save-button';
+                saveButton.textContent = '保存为图片';
+                saveButton.onclick = () => saveAsImage(cardContainer.firstChild);
+
+                const toggleButton = document.createElement('button');
+                toggleButton.className = 'toggle-button';
+                toggleButton.textContent = '查看代码';
+                toggleButton.onclick = () => toggleView(cardContainer, codeView, toggleButton);
+
+                buttonContainer.appendChild(saveButton);
+                buttonContainer.appendChild(toggleButton);
+
+                contentDiv.appendChild(cardContainer);
+                contentDiv.appendChild(codeView);
+                contentDiv.appendChild(buttonContainer);
+            } else {
+                contentDiv.innerText = content;
+            }
+
+            if (role === 'user') {
+                messageDiv.appendChild(contentDiv);
+                messageDiv.appendChild(avatar);
+            } else {
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(contentDiv);
+            }
+
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        async function getResponse() {
+            appendMessage('bot', '正在输入...');
+            const botMessages = document.querySelectorAll('.message.bot .content');
+            const loadingMessage = botMessages[botMessages.length - 1];
+
+            try {
+                const response = await fetch(baseUrl + '/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + apiKey
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: conversation
+                    })
+                });
+                const data = await response.json();
+                const reply = data.choices[0].message.content;
+                conversation.push({ role: 'assistant', content: reply });
+                loadingMessage.parentNode.remove(); // 删除"正在输入..."消息
+                appendMessage('bot', reply); // 添加新的回复消息
+            } catch (error) {
+                loadingMessage.innerText = '抱歉，出错了，请稍后重试。';
+                console.error(error);
+            }
+        }
+
+        function saveAsImage(element) {
+            html2canvas(element).then(canvas => {
+                const link = document.createElement('a');
+                link.download = '汉语新解.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        function toggleView(cardContainer, codeView, button) {
+            if (cardContainer.style.display === 'none') {
+                cardContainer.style.display = 'flex';
+                codeView.style.display = 'none';
+                button.textContent = '查看代码';
+            } else {
+                cardContainer.style.display = 'none';
+                codeView.style.display = 'block';
+                button.textContent = '查看预览';
+            }
+        }
+    </script>
+</body>
+</html>
